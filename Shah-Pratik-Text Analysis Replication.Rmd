@@ -1,0 +1,216 @@
+---
+title: "Text Analysis Replication"
+author: "Pratik"
+date: "April 9, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+	warning = TRUE,
+	message = TRUE,
+	comment = "##",
+	prompt = FALSE,
+	tidy = TRUE,
+	tidy.opts = list(blank = FALSE, width.cutoff = 75),
+	fig.path = "img/",
+	fig.align = "center")
+
+
+#Before begining the analysis, packages related to text mining and analysis are loaded.#
+
+library(dplyr)
+library(tidyr)
+library(tm)
+library(ggplot2)
+library(SnowballC)
+library(quanteda)
+library(broom)
+library(tidytext)
+library(topicmodels)
+library(curl)
+library(stringr)
+library(stringi)
+library(mallet)
+library(wordcloud)
+
+
+```
+
+## Introduction
+
+This is a text analysis replication of the paper, "E-cigarette Social Media Messages: A Text Mining Analysis of Marketing and Consumer Conversations on Twitter". The objective of the paper referred in the analysis replication is to examine the public conversation on Twitter about the use of e-cigarettes to determine overarching themes and insights for trending topics from commercial and consumer users. 
+
+The paper used SAS Text Miner 12.1 software (SAS Institute Inc) for descriptive text mining to reveal the primary topics from tweets collected from March 24, 2015, to July 3, 2015, using a Python script in conjunction with Twitter’s streaming application programming interface. 
+
+Using 18 keywords (ecigs, ecigarettes, e-cigarettes, electronic cigarettes, vaping, vapestick, ehookah, ejuice, Blu eCigs, E-Swisher, Ezsmoker, Fin, NJOY/NJOY, Smoke Assist, V2 Cigs, MarkTen, Vuse, and Tryst),  related to electronic cigarettes,  872,544 tweets and retweets were acquired. This analysis is run on 546,651 tweets that the analyst could acquire from one of the authors.
+
+The themes observed were bifurcated into marketing focused, topics representing diverse proponent and user conversations including discussion of policies, personal experiences, and the differentiation of e-cigarettes from traditional tobacco, often by pointing to the lack of evidence for the harm or risks of e-cigarettes or taking the position that e-cigarettes should be promoted as smoking cessation devices.
+
+Findings revealed unique, large-scale public conversations are occurring on Twitter alongside e-cigarette advertising and promotion. Proponents and users are turning to social media to share knowledge, experience, and questions about e-cigarette use.
+
+
+## Visualization of Data
+
+### The raw data was recorded in MS Excel and it was converted into Notepad (.txt) format for analysis. Here are some examples of the raw data: ###
+
+b'Join Blu eCigs Rewards #blunation for FREE Swag!  https://t.co/OuQyicW3lI'
+
+b'Blu eCigs presents Freedom of the DJ http://t.co/aZxw55oN4q  #coupons #discounts #bargains #offer #cheap'
+
+"b'Late Breaking Vape News: Blu eCigs Named UK ECigarette of the Year http://t.co/RUAAS9dxwd Basically, he wants people to believe that a Bl\xe2\x80\xa6'"
+
+"b'Stephen Dorff: ""Blu eCigs, take back your freedom, keep your douchebaggery."" #SickBurnAHunk @midnight'"
+
+b'Class Action Filed Against Blu eCigs http://t.co/H6TBBCQsZh'
+
+b'Late Breaking Vape News: Class Action Filed Against Blu eCigs http://t.co/logsUwjLn8 A class action has been filed against Lorillard at t\xe2\x80\xa6'
+
+b'LONDON (Reuters) - The health warning on a MarkTen electronic cigarette package is 116 words long.'
+
+
+## Replications/Reanalysis
+
+
+
+First, we import the raw file for analysis and text parsing and filtering. 
+As the process of text parsing, a corpus is made and data is cleaned. 
+It includes removing empty tweets and selecting only the ones that are nonempty, removing URLs, symbols like @,#, etc. Followed by making all the tweets lower case, getting rid of punctuations, white space, and numbers. 
+Stopwords, i.e. the words that are common in any language like 'the', 'him', 'her', 'and', 'can', 'they', etc. are removed. Also, any unwanted words or phrases like 'xex', 'xaxax' are removed. 
+
+```{r cars}
+
+
+
+tfilter <- readLines(file.choose("ecigs_merged_justtweets.txt"))
+
+head(tfilter)
+
+str(tfilter)
+
+doctfilt <- Corpus(VectorSource(as.vector(tfilter))) #creating a text corpus 'doctfilt'#
+
+doctfilt[[1]]$meta  #checking the meta data#
+head(doctfilt[1]$content) #verifying the head of the doctfilt
+
+#Removing empty tweets and selecting only the ones that are nonempty#
+for(i in 1: length(doctfilt)) {
+  if(doctfilt[i]$content == ""){
+    doctfilt[i] <- NULL
+  }
+}
+
+doctfilt #verifie meta data - there are 546652 documents#
+
+removeURLs <- content_transformer(function(x) gsub("http[^[:space:]]*", "", x)) # creating function to remove URL from data#
+
+doctfilt <- tm_map(doctfilt, removeURLs)
+
+removeodd <- content_transformer(function(x, pattern) gsub(pattern, " ", x)) # creating function to remove symbols from data#
+doctfilt <- tm_map(doctfilt, removeodd, "[!@#$%^&*|\\]")
+
+inspect(doctfilt[1:6])
+doctfilt <- tm_map(doctfilt, removeodd, "b'") #remmove other not needed character#
+doctfilt <- tm_map(doctfilt, removeodd, "--();:,''.")
+doctfilt <- tm_map(doctfilt, removeodd, "'b'")
+
+doctfilt <- tm_map(doctfilt, content_transformer(tolower)) #make the data into lower cap#
+doctfilt <- tm_map(doctfilt, removePunctuation) #remove punctuation#
+doctfilt <- tm_map(doctfilt, removeNumbers) #remove numbers#
+sw <- stopwords("english") #assign 'sw' as 'english' stop words
+sw
+
+msw <- c(sw)
+doctfilt <- tm_map(doctfilt, removeWords, msw) #remove stop words from data#
+doctfilt2 <- tm_map(doctfilt, removeWords, c("xf", "xe", "xa", "x x", "amp", "xe x xa", "xs", "xc")) 
+#remove other unwanted words from data#
+doctfilt2
+inspect(doctfilt2[1:10]) #reverification of data#
+
+tocut <- c("xd", "xbe", "xbf", " x ", "xau", "xbb x t  xanh", "x xaf   x xsay    ", "xae", "     x    xd xbb   xd    x xaa    xac   x xb ni ", "ycyrh", "x xtryst", "x xd", "xexa", "just", "want", "peopl", "via", "xex", "xfx", "xfxa", "get", "like", "one", "nonswivel", "save", "see", "find", "say", "day", "year", "free", "can", "new", "news", "health", "help", "love", "deal", "come", "tobacco", "tri", "use", "make", "check", "review", "kit", "look", "save", "flavor","start", "video", "time","today", "now", "thank", "fin", "cool", "live", "friend", "semana", "know", "right", "think", "tryst", "sale", "mod", "line", "stop", "nicotine", "vapeon", "best", "studi", "dont", "vaper", "place", "beauty", "beautiful", "need", "final", "hand", "bottle", "bottle", "nightclub", "vega", "call", "public", "find", "teen", "standard", "pro", "financ", "finance", "ban", "notblowingsmoke", "shark", "shear") 
+#create a vector of other unwanted words from data, including the words that the authhors did not include in final list of terms#
+doctfilt2 <- tm_map(doctfilt2, removeWords, tocut) 
+#removing other unwanted words from data#
+
+doctfilt2 <- tm_map(doctfilt2, stripWhitespace) 
+#remove Whitespace#
+```
+
+After cleaning the data, we'll now create the Document Term Matrix (DTM): DTM lists all occurrences of words in the corpus, by document. In the DTM, the documents are represented by rows and the terms (or words) by columns. If a word occurs in a particular document, then the matrix entry for corresponding to that row and column is 1, else it is 0 (multiple occurrences within a document are recorded – that is, if a word occurs twice in a document, it is recorded as “2” in the relevant matrix entry).
+
+This DTM will help us then in further filtering out the sparse terms that don't appear in atleast 1% of documents or tweets.
+
+```{r process, echo = FALSE}
+doctfilt2DTM <- DocumentTermMatrix(doctfilt2) 
+#create doctfilt2DTM - a DTM for further analysis#
+
+doctfilt2DTM 
+#there are now 546652 documents / tweets with 255108 terms. Here 405914 cells are nonzero and 139451239292 are zero. Hence the sparsity is 100% (139451239292/139451239292+4059124).
+
+inspect(doctfilt2DTM[,1:30])
+
+doctfilt3DTM <- removeSparseTerms(doctfilt2DTM, 0.99) #remove terms that don't appear in atleast 1% of documents or tweets#
+
+inspect(doctfilt3DTM) #reverification#
+
+#As evident, vaping appeared 14 times in 213468 docs/tweets at the same time, beauty is far lesser and shows 0 entries
+
+findFreqTerms(doctfilt3DTM, lowfreq = 0, highfreq = Inf) #These are 33 frequent terms identified from the entire corpus of the documents/tweets#
+
+doctfiltfreq <- colSums(as.matrix(doctfilt3DTM)) #adds all the individual frequencies in doctfilt3DTM and creates a new table with word and frequency#
+doctfiltfreq <- sort(doctfiltfreq, decreasing = T) #sorts into decreasing order
+doctfiltDF <- data.frame(word = names(doctfiltfreq), freq = doctfiltfreq)
+rownames(doctfiltDF) <- NULL
+head(doctfiltDF)
+
+doctfiltDF #This has created tokens of terms that appear most frequently with term with the highest frequency is listed the first#
+
+tfg <- ggplot(data = doctfiltDF[1:21, ], aes(x = reorder(word, freq), y = freq)) + 
+  xlab("Word") + ylab("Frequency") + geom_bar(stat = "identity")+ coord_flip()
+
+tfg #a graph plotted to show the term frequencies#
+
+
+#Mean#
+
+doctfiltfreqM <- colMeans(as.matrix(doctfilt3DTM)) #We try to find out the average of each terms#
+doctfiltfreqM <- sort(doctfiltfreqM, decreasing = T)
+doctfiltfreqM
+doctfiltDFM <- data.frame(word = names(doctfiltfreqM), freq = doctfiltfreqM, round(doctfiltfreqM, digits = 2))
+rownames(doctfiltDFM) <- NULL
+head(doctfiltDFM)
+doctfiltDFM #shows vaping appeared 41% as compared to all the other terms, ecigs 22% and so on#
+
+m <- ggplot(data = doctfiltDFM[1:21, ], aes(x = reorder(word, freq), y = freq)) + 
+  xlab("Word") + ylab("Mean") + geom_bar(stat = "identity")+ coord_flip()
+
+m #plot of the mean#
+
+findFreqTerms(doctfilt3DTM, lowfreq = 0, highfreq = Inf)
+
+#Correlation - we'll look at the correlation between the most appeared terms#
+
+findAssocs(doctfilt3DTM, terms = c("vaping", "ecigs"), corlimit = 0.1)
+findAssocs(doctfilt3DTM, terms = c("vaping", "quit"), corlimit = 0.1) #shows that there was a stronger correlation between the term quit and smoking and could be assumed that these terms had a frequent co-occurence#
+
+attrs <- list(node = list(fillcolor = "orange", fontsize = "50"), edge = list(), graph = list())
+plot(doctfilt3DTM, terms = findFreqTerms(doctfilt3DTM, lowfreq = 1000), attrs = attrs, corThreshold = 0.1)
+#A plot of correlation among terms that appear in atleast 1000 tweets with a correlation of at least 0.10)
+
+
+set.seed(1)
+wordcloud(doctfiltDF$word, doctfiltDF$freq, min.freq = 500) #Wordcloud showing the words in order of frequency#
+
+```
+
+## Summary
+
+In this analysis, we clean the data, filter out the least frequent terms to ascertain the most used terms and their co-occurence through correlation. We can see that the strongest co-occurence appears to be that of the term vape. For example, looking at its co-occurence with reddit, we can assume that there were some promotional interactions where the reditt links were shared in context of vape (and similarly in context of ecigs).
+
+The analysis in the actual paper goes on to determining the topic models and determin the exact number of tweets that fell in each topics. For the same,  expectation maximization (EM) clustering in SAS was used. However, this analysis could only carry out determining the term frequencies and instead found out the average use of the terms and plotted their co-occurences that points indirectly at the kind of conversation that would have occured through tweets. Thus, looking at the co-occurence plot, we can assume that majority of conversations were of people sharing their experiences of using vape or ecigs (vape - vapeporn, vaping - vapecommunity, etc.), there were several promotional conversations that promoted 'winning' ecig or had interactions about prices and lastly, there were conversations that motivated quitting smoking and even ecigarettes.
+
+## References
+
+Lazard, A. J., Saffer, A. J., Wilcox, G. B., Chung, A. D., Mackert, M. S., & Bernhardt, J. M. (2016). E-cigarette social media messages: a text mining analysis of marketing and consumer conversations on Twitter. JMIR public health and surveillance, 2(2), e171.
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
