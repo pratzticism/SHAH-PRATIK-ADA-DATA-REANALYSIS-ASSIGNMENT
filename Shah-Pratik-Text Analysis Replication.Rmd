@@ -33,6 +33,9 @@ library(stringr)
 library(stringi)
 library(mallet)
 library(wordcloud)
+library(formatR)
+library(repmis)
+library(rdrop2)
 
 
 ```
@@ -41,7 +44,7 @@ library(wordcloud)
 
 This is a text analysis replication of the paper, "E-cigarette Social Media Messages: A Text Mining Analysis of Marketing and Consumer Conversations on Twitter". The objective of the paper referred in the analysis replication is to examine the public conversation on Twitter about the use of e-cigarettes to determine overarching themes and insights for trending topics from commercial and consumer users. 
 
-The paper used SAS Text Miner 12.1 software (SAS Institute Inc) for descriptive text mining to reveal the primary topics from tweets collected from March 24, 2015, to July 3, 2015, using a Python script in conjunction with Twitter’s streaming application programming interface. 
+The paper used SAS Text Miner 12.1 software (SAS Institute Inc) for descriptive text mining to reveal the primary topics from tweets collected from March 24, 2015, to July 3, 2015, using a Python script in conjunction with Twitter streaming application programming interface. 
 
 Using 18 keywords (ecigs, ecigarettes, e-cigarettes, electronic cigarettes, vaping, vapestick, ehookah, ejuice, Blu eCigs, E-Swisher, Ezsmoker, Fin, NJOY/NJOY, Smoke Assist, V2 Cigs, MarkTen, Vuse, and Tryst),  related to electronic cigarettes,  872,544 tweets and retweets were acquired. This analysis is run on 546,651 tweets that the analyst could acquire from one of the authors.
 
@@ -78,11 +81,19 @@ As the process of text parsing, a corpus is made and data is cleaned.
 It includes removing empty tweets and selecting only the ones that are nonempty, removing URLs, symbols like @,#, etc. Followed by making all the tweets lower case, getting rid of punctuations, white space, and numbers. 
 Stopwords, i.e. the words that are common in any language like 'the', 'him', 'her', 'and', 'can', 'they', etc. are removed. Also, any unwanted words or phrases like 'xex', 'xaxax' are removed. 
 
-```{r cars}
+```{r}
+
+link <- "https://www.dropbox.com/s/eemv8ygbnj0db28/ecigs_merged_justtweets.txt?dl=0"
+
+link <- gsub(pattern = "dl=0", replacement = "dl=1", x = link)
+
+tfilter <- readLines(link)
 
 
 
-tfilter <- readLines(file.choose("ecigs_merged_justtweets.txt"))
+
+
+
 
 head(tfilter)
 
@@ -136,11 +147,11 @@ doctfilt2 <- tm_map(doctfilt2, stripWhitespace)
 #remove Whitespace#
 ```
 
-After cleaning the data, we'll now create the Document Term Matrix (DTM): DTM lists all occurrences of words in the corpus, by document. In the DTM, the documents are represented by rows and the terms (or words) by columns. If a word occurs in a particular document, then the matrix entry for corresponding to that row and column is 1, else it is 0 (multiple occurrences within a document are recorded – that is, if a word occurs twice in a document, it is recorded as “2” in the relevant matrix entry).
+After cleaning the data, we'll now create the Document Term Matrix (DTM): DTM lists all occurrences of words in the corpus, by document. In the DTM, the documents are represented by rows and the terms (or words) by columns. If a word occurs in a particular document, then the matrix entry for corresponding to that row and column is 1, else it is 0 (multiple occurrences within a document are recorded as 2 that is, if a word occurs twice in a document, it is recorded as 2 in the relevant matrix entry).
 
 This DTM will help us then in further filtering out the sparse terms that don't appear in atleast 1% of documents or tweets.
 
-```{r process, echo = FALSE}
+```{r}
 doctfilt2DTM <- DocumentTermMatrix(doctfilt2) 
 #create doctfilt2DTM - a DTM for further analysis#
 
