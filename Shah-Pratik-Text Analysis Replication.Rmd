@@ -91,10 +91,6 @@ tfilter <- readLines(link)
 
 
 
-
-
-
-
 head(tfilter)
 
 str(tfilter)
