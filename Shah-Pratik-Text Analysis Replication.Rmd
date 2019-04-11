@@ -89,6 +89,9 @@ link <- gsub(pattern = "dl=0", replacement = "dl=1", x = link)
 
 tfilter <- readLines(link)
 
+link <- gsub(pattern = "dl=0", replacement = "dl=1", x = link)
+
+tfilter <- readLines(link)
 
 
 head(tfilter)
